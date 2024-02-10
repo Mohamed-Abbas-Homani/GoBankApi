@@ -8,11 +8,12 @@ import (
 )
 
 type Storage interface {
-	CreateAccount(*Account) error
-	DeleteAccount(int) error
-	UpdateAccount(*Account) error
-	GetAccounts() ([]*Account, error)
-	GetAccountByID(int) (*Account, error)
+	CreateAccount(*Account)		error
+	DeleteAccount(int)			error
+	UpdateAccount(*Account) 	error
+	GetAccounts() 				([]*Account, error)
+	GetAccountByID(int) 		(*Account, error)
+	GetAccountByNumber(int) 	(*Account, error)
 }
 
 type PostgresStore struct {
@@ -45,6 +46,7 @@ func (s *PostgresStore) CreateAccountTable() error {
 		first_name varchar(50),
 		last_name varchar(50),
 		number serial,
+		encrypted_password varchar(256),
 		balance serial,
 		created_at timestamp
 	)`
@@ -56,11 +58,11 @@ func (s *PostgresStore) CreateAccountTable() error {
 func (s *PostgresStore) CreateAccount(acc *Account) error {
 	query := `
 	insert into account
-	(first_name, last_name, number, balance, created_at)
+	(first_name, last_name, number, encrypted_password, balance, created_at)
 	values
-	($1, $2, $3, $4, $5)
+	($1, $2, $3, $4, $5, $6)
 	`
-	_, err := s.db.Query(query, acc.FirstName, acc.LastName, acc.Number, acc.Balance, acc.CreatedAt)
+	_, err := s.db.Query(query, acc.FirstName, acc.LastName, acc.Number, acc.EncryptedPassword, acc.Balance, acc.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -108,6 +110,19 @@ func (s *PostgresStore) GetAccountByID(id int) (*Account, error) {
 	return nil, fmt.Errorf("Account with id %d not found", id)
 }
 
+func (s *PostgresStore) GetAccountByNumber(number int) (*Account, error){
+	rows, err := s.db.Query("select * from account where number = $1", number)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		return scanIntoAccount(rows)
+	}
+
+	return nil, fmt.Errorf("Account with number %d not found", number)
+}
+
 func scanIntoAccount(rows *sql.Rows) (*Account, error) {
 	account := new(Account)
 	if err := rows.Scan(
@@ -115,6 +130,7 @@ func scanIntoAccount(rows *sql.Rows) (*Account, error) {
 		&account.FirstName,
 		&account.LastName,
 		&account.Number,
+		&account.EncryptedPassword,
 		&account.Balance,
 		&account.CreatedAt,
 		); err != nil {
