@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func seedAccount(store Storage, fname, lname, pw string) *Account{
+func seedAccount(store Storage, fname, lname, pw string) *Account {
 	acc, err := NewAccount(fname, lname, pw)
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +43,7 @@ func main() {
 		fmt.Println("Seeding the database")
 		seedAccounts(store)
 	}
-	
+
 	server := NewAPIServer(":3000", store)
 	server.Run()
 }
